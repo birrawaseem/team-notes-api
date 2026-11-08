@@ -70,6 +70,8 @@ npm run db:init             # create tables
 npm run db:seed             # load sample users, teams and notes
 npm start                   # start the API on http://localhost:3000
 ```
+### There is a postman collection for all API calls for easy testing 
+
 
 Check it's running:
 
@@ -265,6 +267,8 @@ All errors return JSON in the form `{"error": "message"}`.
 Add commit history
 
 ## Commit history 
+commit 11ce210b4c9cb85ab8cc603633ba9bbf707437c1
+commit e728b1fd095ca4bf6969663b3e1898b9d841789d
 
 de4b91d (HEAD -> main, origin/main, origin/HEAD) Merge pull request #5 from birrawaseem/test/include-unit-tests
 48e5450 (origin/test/include-unit-tests, test/include-unit-tests) fix: get healthcheck try block
