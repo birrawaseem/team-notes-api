@@ -1,9 +1,9 @@
 const express = require('express');
+const pool = require('./db');
+const notesRouter = require('./routes/notes');
 
 const app = express();
 app.use(express.json());
-
-const pool = require('./db');
 
 app.get('/health', async (req, res) => {
   try {
@@ -12,6 +12,14 @@ app.get('/health', async (req, res) => {
   } catch (err) {
     res.status(503).json({ status: 'error', db: 'unreachable' });
   }
+});
+
+
+app.use(notesRouter);
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 const PORT = process.env.PORT || 3000;
