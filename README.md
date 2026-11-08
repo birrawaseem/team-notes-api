@@ -2,18 +2,64 @@
 
 A REST API for small teams to create, organize, and share notes.
 
+## What took the most time: who can edit and delete notes + DB choice
+
+### who can edit and delete notes
+The choice that took the most thought was the permission model for
+`PATCH` and `DELETE`. This is really a scope question, the kind a
+product owner would normally answer: in a shared team space, should
+any member be able to change any note, or only the person who wrote
+it?
+
+Both are reasonable. Shared editing treats notes like a team wiki,
+where anyone can fix a typo or update outdated information. Author-only
+editing treats notes as personal contributions that teammates can
+read but not alter.
+
+I chose **author-only** for edits and deletes. Without clear
+requirements, it's the safer default: no one can lose their work to a
+teammate's mistake, and it's easier to loosen a permission later than
+to take one away once users rely on it. Switching to shared editing
+would only mean removing the author check in `routes/notes.js`.
+
+## DB choice
+
+I considered three options: MongoDB, SQLite, and PostgreSQL.
+
+I ruled out **MongoDB** first. A document database shines when data is
+loosely structured, but this data is tabular and relational: users
+belong to teams, and notes belong to teams. The core access rule
+("only team members can see a team's notes") is a simple join in SQL,
+whereas in MongoDB I'd have to duplicate membership data or do lookups
+by hand.
+
+## What I'd do next
+
+- **Confirm the edit and delete rules with stakeholders.** The
+  author-only permission model was my best judgment without clear
+  requirements. Before building further, I'd confirm with the product
+  owner whether teams expect shared editing, author-only editing, or
+  something in between (for example, team admins who can edit any
+  note), so the service matches the business requirements exactly.
+- **Show author names on notes.** Notes currently return only an
+  `author_id`, which means little to someone reading them. Including
+  the author's name in responses would make notes easier to follow,
+  since teammates think of each other by name, not by number.
+
+
 ## Tech stack
 
 - Node.js + Express
 - PostgreSQL 16 (run via Docker Compose)
 - `pg` for database access
+- Jest + Supertest for tests
 
 ## Getting started
 
 ### Prerequisites
 
 - Node.js 20+
-- Docker
+- Docker (running)
 
 ### Setup
 
@@ -32,48 +78,74 @@ curl localhost:3000/health
 # {"status":"ok","db":"ok"}
 ```
 
-## Authentication
+## Running tests
 
-Requests identify the user with an `X-User-Id` header:
+With Postgres running:
 
 ```bash
-curl -H "X-User-Id: 1" localhost:3000/me
+npm test                    # run the test suite
+npm run test:coverage       # run with a coverage report
 ```
 
-This is a stand-in for real authentication (see trade-offs below).
+The tests are integration tests: they send real HTTP requests to the
+app and run against the real database, because the access rules live
+in the SQL queries. Each test resets the database to the seed data,
+so **running the tests wipes any notes you created by hand**.
+
+## Authentication
+
+Every request except `/health` must include an `X-User-Id` header
+with the ID of an existing user:
+
+```bash
+curl -H "X-User-Id: 2" localhost:3000/teams/1/notes
+```
+
+A missing, invalid, or unknown ID returns `401`. This is a stand-in
+for real authentication (see trade-offs below).
 
 ## Seed data
 
-| User      | Teams                |
-|-----------|----------------------|
-| 1 – Alice | Engineering, Design  |
-| 2 – Bob   | Engineering          |
-| 3 – Carol | Design               |
+| User      | Teams               |
+|-----------|---------------------|
+| 1 – Alice | Engineering, Design |
+| 2 – Bob   | Engineering         |
+| 3 – Carol | Design              |
 
 Team 1 is Engineering, team 2 is Design.
 
-| Method | Path                   | Description                        |
-|--------|------------------------|------------------------------------|
-| GET    | `/health`              | Service and database health check  |
-| GET    | `/teams/:teamId/notes` | List a team's notes                |
-| POST   | `/teams/:teamId/notes` | Create a note in a team            |
-| GET    | `/notes/:noteId`       | Get a single note                  |
+| Note | Team        | Author |
+|------|-------------|--------|
+| 1    | Engineering | Alice  |
+| 2    | Engineering | Bob    |
+| 3    | Design      | Carol  |
+
+Run `npm run db:seed` at any time to reset the data.
+
+## Endpoints
+
+| Method | Path                   | Description                       |
+|--------|------------------------|-----------------------------------|
+| GET    | `/health`              | Service and database health check |
+| GET    | `/teams/:teamId/notes` | List a team's notes               |
+| POST   | `/teams/:teamId/notes` | Create a note in a team           |
+| GET    | `/notes/:noteId`       | Get a single note                 |
 | PATCH  | `/notes/:noteId`       | Update a note's title and/or body |
 | DELETE | `/notes/:noteId`       | Delete a note                     |
 
-All endpoints except `/health` require an `X-User-Id` header.
+### Access rules
+
+- Team members can read and create notes in their teams.
+- Only a note's author can edit or delete it.
+- Users outside a team get `404` for that team and its notes, so
+  they can't tell whether those exist.
+
 The examples below use the seed data.
 
 ### Health check
 
 ```bash
 curl localhost:3000/health
-```
-
-### Current user
-
-```bash
-curl -H "X-User-Id: 1" localhost:3000/me
 ```
 
 ### List a team's notes
@@ -83,7 +155,7 @@ curl -H "X-User-Id: 2" localhost:3000/teams/1/notes
 ```
 
 Bob (user 2) is in Engineering (team 1), so this returns its notes.
-He isn't in Design, so this returns `404`:
+He isn't in Design (team 2), so this returns `404`:
 
 ```bash
 curl -H "X-User-Id: 2" localhost:3000/teams/2/notes
@@ -99,7 +171,8 @@ curl -X POST localhost:3000/teams/1/notes \
 ```
 
 Returns `201` with the created note. `title` is required (max 200
-characters); `body` is optional.
+characters); `body` is optional. The author is always the current
+user.
 
 ### Get a single note
 
@@ -113,6 +186,7 @@ Design, so this returns `404`:
 ```bash
 curl -H "X-User-Id: 2" localhost:3000/notes/3
 ```
+
 ### Update a note
 
 Send `title`, `body`, or both. Fields you leave out stay unchanged.
@@ -143,6 +217,8 @@ As Alice (user 1), who's on the team but isn't the author, it returns
 
 ### Errors
 
+All errors return JSON in the form `{"error": "message"}`.
+
 | Status | Meaning                                              |
 |--------|------------------------------------------------------|
 | 400    | Invalid input (e.g. missing title, bad id)           |
@@ -155,14 +231,23 @@ As Alice (user 1), who's on the team but isn't the author, it returns
 
 - **Notes belong to teams, not users.** Access comes from team
   membership, which makes sharing the default.
+- **Only authors can edit or delete their notes.** Teammates get
+  `403` (they can see the note, so `404` would be misleading).
+  Shared editing would be a small change if teams wanted it.
+- **404 instead of 403 for outsiders**, so they can't tell whether a
+  team or note exists.
 - **PostgreSQL.** The data is relational (users ↔ teams ↔ notes), so
   membership checks are simple joins enforced by foreign keys. Chosen
   over SQLite for production realism and over MongoDB because the
   access rules fit relational data better.
 - **Docker Compose** so the database runs with one command and no
   local install.
-- **404 instead of 403** for teams you don't belong to, so outsiders
-  can't tell whether a team exists.
+- **`/notes/:noteId` instead of `/teams/:teamId/notes/:noteId`.** Note
+  IDs are already unique, so the shorter URL is simpler; the team
+  check still happens in the query.
+- **Hard deletes.** Deleted notes are removed permanently. A
+  production app might use soft deletes (a `deleted_at` column) to
+  allow recovery and auditing.
 - **Parameterized queries** throughout to prevent SQL injection.
 
 ## Trade-offs and out of scope
@@ -172,6 +257,36 @@ As Alice (user 1), who's on the team but isn't the author, it returns
 - **No migration tool.** The schema is applied with
   `CREATE TABLE IF NOT EXISTS`. A real project would use versioned
   migrations (e.g. node-pg-migrate).
-- **Local credentials** in `docker-compose.yml` are for development
-  only; production would use environment variables or a secrets
-  manager.
+- **Tests share the development database.** A separate test database
+  would keep test runs from wiping local data.
+- **Local
+
+
+Add commit history
+
+## Commit history 
+
+de4b91d (HEAD -> main, origin/main, origin/HEAD) Merge pull request #5 from birrawaseem/test/include-unit-tests
+48e5450 (origin/test/include-unit-tests, test/include-unit-tests) fix: get healthcheck try block
+83a2e9a test: add CRUD tests
+542b0a8 test: add auth user tests
+3146d6c test: add health check test
+f445a45 Merge pull request #4 from birrawaseem/feat/add-more-rest-calls
+ea22fa8 (origin/feat/add-more-rest-calls, feat/add-more-rest-calls) chore: keep readme healthy
+59a998e feat: Add DELETE call to delete a note within your own team
+a72f5a4 chore: keep readme healthy
+b5b1b1c feature: Add PATCH call for users to update their own notes
+f248e41 chore: keep readme healthy
+5ae0a86 feature: Add GET call to get a single note by its ID (within your own team)
+ff78a4c chore: keep readme healthy
+d7e197b feature: Add POST call within your team
+fb239a4 Merge pull request #3 from birrawaseem/feat/team-specific-access
+9cbc1c1 (origin/feat/team-specific-access, feat/team-specific-access) feat: Add team specific middleware for access and first rest call
+df8adad Merge pull request #2 from birrawaseem/feat/db-connection
+3dc5f73 (origin/feat/db-connection, feat/db-connection) feature: Create Readme and add what we currently know
+f6518a2 feature: Add DB Connectivity (Postgres), Schema, and Seed
+cbd0e9f Merge pull request #1 from birrawaseem/feature/auth-middleware
+f54600f (origin/feature/auth-middleware, feature/auth-middleware) feat: Add middleware
+d557248 feat: Add docker for Postgres
+0a9f8a7 feat: scaffolding for app + implement health check
+45940d6 Initial commit
