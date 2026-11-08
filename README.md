@@ -58,6 +58,7 @@ Team 1 is Engineering, team 2 is Design.
 | GET    | `/teams/:teamId/notes` | List a team's notes                |
 | POST   | `/teams/:teamId/notes` | Create a note in a team            |
 | GET    | `/notes/:noteId`       | Get a single note                  |
+| PATCH  | `/notes/:noteId`       | Update a note's title and/or body |
 
 All endpoints except `/health` require an `X-User-Id` header.
 The examples below use the seed data.
@@ -111,6 +112,21 @@ Design, so this returns `404`:
 ```bash
 curl -H "X-User-Id: 2" localhost:3000/notes/3
 ```
+### Update a note
+
+Send `title`, `body`, or both. Fields you leave out stay unchanged.
+
+```bash
+curl -X PATCH localhost:3000/notes/1 \
+  -H "X-User-Id: 1" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Sprint planning (updated)"}'
+```
+
+Note 1 was written by Alice (user 1), so this succeeds. The same
+request as Bob (user 2) returns `403`, since he's on the team but
+isn't the author. As Carol (user 3), who isn't on the team, it
+returns `404`.
 
 ### Errors
 
