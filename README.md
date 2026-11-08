@@ -70,6 +70,8 @@ npm run db:init             # create tables
 npm run db:seed             # load sample users, teams and notes
 npm start                   # start the API on http://localhost:3000
 ```
+### There is a postman collection for all API calls for easy testing 
+
 
 Check it's running:
 
