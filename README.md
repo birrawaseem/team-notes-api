@@ -54,11 +54,61 @@ Team 1 is Engineering, team 2 is Design.
 
 ## Endpoints
 
-| Method | Path                    | Description                       |
-|--------|-------------------------|-----------------------------------|
-| GET    | `/health`               | Service and database health check |
-| GET    | `/me`                   | The current user                  |
-| GET    | `/teams/:teamId/notes`  | List a team's notes (members only)|
+| Method | Path                   | Description                        |
+|--------|------------------------|------------------------------------|
+| GET    | `/health`              | Service and database health check  |
+| GET    | `/me`                  | The current user                   |
+| GET    | `/teams/:teamId/notes` | List a team's notes (members only) |
+| POST   | `/teams/:teamId/notes` | Create a note in a team            |
+
+All endpoints except `/health` require an `X-User-Id` header.
+The examples below use the seed data.
+
+### Health check
+
+```bash
+curl localhost:3000/health
+```
+
+### Current user
+
+```bash
+curl -H "X-User-Id: 1" localhost:3000/me
+```
+
+### List a team's notes
+
+```bash
+curl -H "X-User-Id: 2" localhost:3000/teams/1/notes
+```
+
+Bob (user 2) is in Engineering (team 1), so this returns its notes.
+He isn't in Design, so this returns `404`:
+
+```bash
+curl -H "X-User-Id: 2" localhost:3000/teams/2/notes
+```
+
+### Create a note
+
+```bash
+curl -X POST localhost:3000/teams/1/notes \
+  -H "X-User-Id: 2" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Standup notes", "body": "Discussed the release."}'
+```
+
+Returns `201` with the created note. `title` is required (max 200
+characters); `body` is optional.
+
+### Errors
+
+| Status | Meaning                                         |
+|--------|-------------------------------------------------|
+| 400    | Invalid input (e.g. missing title, bad team id) |
+| 401    | Missing, invalid, or unknown `X-User-Id`        |
+| 404    | Team not found, or you're not a member          |
+| 500    | Unexpected server error                         |
 
 ## Design decisions
 
