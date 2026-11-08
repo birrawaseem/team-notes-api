@@ -46,6 +46,7 @@ by hand.
   the author's name in responses would make notes easier to follow,
   since teammates think of each other by name, not by number.
 
+
 ## Tech stack
 
 - Node.js + Express
@@ -259,3 +260,33 @@ All errors return JSON in the form `{"error": "message"}`.
 - **Tests share the development database.** A separate test database
   would keep test runs from wiping local data.
 - **Local
+
+
+Add commit history
+
+## Commit history 
+
+de4b91d (HEAD -> main, origin/main, origin/HEAD) Merge pull request #5 from birrawaseem/test/include-unit-tests
+48e5450 (origin/test/include-unit-tests, test/include-unit-tests) fix: get healthcheck try block
+83a2e9a test: add CRUD tests
+542b0a8 test: add auth user tests
+3146d6c test: add health check test
+f445a45 Merge pull request #4 from birrawaseem/feat/add-more-rest-calls
+ea22fa8 (origin/feat/add-more-rest-calls, feat/add-more-rest-calls) chore: keep readme healthy
+59a998e feat: Add DELETE call to delete a note within your own team
+a72f5a4 chore: keep readme healthy
+b5b1b1c feature: Add PATCH call for users to update their own notes
+f248e41 chore: keep readme healthy
+5ae0a86 feature: Add GET call to get a single note by its ID (within your own team)
+ff78a4c chore: keep readme healthy
+d7e197b feature: Add POST call within your team
+fb239a4 Merge pull request #3 from birrawaseem/feat/team-specific-access
+9cbc1c1 (origin/feat/team-specific-access, feat/team-specific-access) feat: Add team specific middleware for access and first rest call
+df8adad Merge pull request #2 from birrawaseem/feat/db-connection
+3dc5f73 (origin/feat/db-connection, feat/db-connection) feature: Create Readme and add what we currently know
+f6518a2 feature: Add DB Connectivity (Postgres), Schema, and Seed
+cbd0e9f Merge pull request #1 from birrawaseem/feature/auth-middleware
+f54600f (origin/feature/auth-middleware, feature/auth-middleware) feat: Add middleware
+d557248 feat: Add docker for Postgres
+0a9f8a7 feat: scaffolding for app + implement health check
+45940d6 Initial commit
