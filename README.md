@@ -36,10 +36,6 @@ curl localhost:3000/health
 
 Requests identify the user with an `X-User-Id` header:
 
-```bash
-curl -H "X-User-Id: 1" localhost:3000/me
-```
-
 This is a stand-in for real authentication (see trade-offs below).
 
 ## Seed data
