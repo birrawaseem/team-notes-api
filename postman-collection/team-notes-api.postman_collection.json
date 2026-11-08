@@ -1,0 +1,321 @@
+{
+  "info": {
+    "name": "team-notes-api",
+    "description": "All endpoints for team-notes-api, using the seed data.\n\nUsers: Alice (1) is in Engineering and Design, Bob (2) is in Engineering, Carol (3) is in Design.\nNotes: 1 = Engineering by Alice, 2 = Engineering by Bob, 3 = Design by Carol.\n\nRun `npm run db:seed` to reset the data before running the collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "alice", "value": "1" },
+    { "key": "bob", "value": "2" },
+    { "key": "carol", "value": "3" }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('Database is ok', () => pm.expect(pm.response.json().db).to.eql('ok'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List notes",
+      "item": [
+        {
+          "name": "List team notes (member)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-User-Id", "value": "{{bob}}" }],
+            "url": "{{baseUrl}}/teams/1/notes",
+            "description": "Bob is in Engineering (team 1), so he sees its notes."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List team notes (non-member → 404)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-User-Id", "value": "{{bob}}" }],
+            "url": "{{baseUrl}}/teams/2/notes",
+            "description": "Bob isn't in Design (team 2), so he gets 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status is 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing X-User-Id → 401",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/teams/1/notes",
+            "description": "No X-User-Id header, so the request is rejected."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status is 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Create note",
+      "item": [
+        {
+          "name": "Create note",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-User-Id", "value": "{{bob}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Standup notes\",\n  \"body\": \"Discussed the release.\"\n}"
+            },
+            "url": "{{baseUrl}}/teams/1/notes",
+            "description": "Bob creates a note in Engineering. The author is always the current user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Author is Bob', () => pm.expect(pm.response.json().author_id).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create note without title → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-User-Id", "value": "{{bob}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"No title here\"\n}"
+            },
+            "url": "{{baseUrl}}/teams/1/notes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status is 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Get note",
+      "item": [
+        {
+          "name": "Get note (member)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-User-Id", "value": "{{bob}}" }],
+            "url": "{{baseUrl}}/notes/1",
+            "description": "Note 1 belongs to Engineering, so Bob can see it."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get note (non-member → 404)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-User-Id", "value": "{{bob}}" }],
+            "url": "{{baseUrl}}/notes/3",
+            "description": "Note 3 belongs to Design, so Bob gets 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status is 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Update note",
+      "item": [
+        {
+          "name": "Update note (author)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "X-User-Id", "value": "{{alice}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sprint planning (updated)\"\n}"
+            },
+            "url": "{{baseUrl}}/notes/1",
+            "description": "Alice wrote note 1, so she can edit it."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Title updated', () => pm.expect(pm.response.json().title).to.eql('Sprint planning (updated)'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update note (teammate, not author → 403)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "X-User-Id", "value": "{{bob}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Hijacked\"\n}"
+            },
+            "url": "{{baseUrl}}/notes/1",
+            "description": "Bob is on Engineering but didn't write note 1."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status is 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update note (non-member → 404)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "X-User-Id", "value": "{{carol}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Hijacked\"\n}"
+            },
+            "url": "{{baseUrl}}/notes/1",
+            "description": "Carol isn't on Engineering."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status is 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Delete note",
+      "item": [
+        {
+          "name": "Delete note (teammate, not author → 403)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-User-Id", "value": "{{alice}}" }],
+            "url": "{{baseUrl}}/notes/2",
+            "description": "Alice is on Engineering but didn't write note 2."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status is 403', () => pm.response.to.have.status(403));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete note (non-member → 404)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-User-Id", "value": "{{carol}}" }],
+            "url": "{{baseUrl}}/notes/2",
+            "description": "Carol isn't on Engineering."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status is 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete note (author)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-User-Id", "value": "{{bob}}" }],
+            "url": "{{baseUrl}}/notes/2",
+            "description": "Bob wrote note 2, so he can delete it. Run `npm run db:seed` to bring it back."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status is 204', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
