@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "db:init": "node db/init.js",
+    "db:seed": "node db/seed.js"
   },
   "repository": {
     "type": "git",
@@ -19,6 +21,7 @@
   },
   "homepage": "https://github.com/birrawaseem/team-notes-api#readme",
   "dependencies": {
-    "express": "^5.3.0"
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
   }
 }
