@@ -52,14 +52,12 @@ This is a stand-in for real authentication (see trade-offs below).
 
 Team 1 is Engineering, team 2 is Design.
 
-## Endpoints
-
 | Method | Path                   | Description                        |
 |--------|------------------------|------------------------------------|
 | GET    | `/health`              | Service and database health check  |
-| GET    | `/me`                  | The current user                   |
-| GET    | `/teams/:teamId/notes` | List a team's notes (members only) |
+| GET    | `/teams/:teamId/notes` | List a team's notes                |
 | POST   | `/teams/:teamId/notes` | Create a note in a team            |
+| GET    | `/notes/:noteId`       | Get a single note                  |
 
 All endpoints except `/health` require an `X-User-Id` header.
 The examples below use the seed data.
@@ -101,14 +99,28 @@ curl -X POST localhost:3000/teams/1/notes \
 Returns `201` with the created note. `title` is required (max 200
 characters); `body` is optional.
 
+### Get a single note
+
+```bash
+curl -H "X-User-Id: 2" localhost:3000/notes/1
+```
+
+Note 1 belongs to Engineering, so Bob can see it. Note 3 belongs to
+Design, so this returns `404`:
+
+```bash
+curl -H "X-User-Id: 2" localhost:3000/notes/3
+```
+
 ### Errors
 
-| Status | Meaning                                         |
-|--------|-------------------------------------------------|
-| 400    | Invalid input (e.g. missing title, bad team id) |
-| 401    | Missing, invalid, or unknown `X-User-Id`        |
-| 404    | Team not found, or you're not a member          |
-| 500    | Unexpected server error                         |
+| Status | Meaning                                              |
+|--------|------------------------------------------------------|
+| 400    | Invalid input (e.g. missing title, bad id)           |
+| 401    | Missing, invalid, or unknown `X-User-Id`             |
+| 403    | You can see the note but aren't allowed to change it |
+| 404    | Not found, or you're not a member of its team        |
+| 500    | Unexpected server error                              |
 
 ## Design decisions
 
