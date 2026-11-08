@@ -2,6 +2,50 @@
 
 A REST API for small teams to create, organize, and share notes.
 
+## What took the most time: who can edit and delete notes + DB choice
+
+### who can edit and delete notes
+The choice that took the most thought was the permission model for
+`PATCH` and `DELETE`. This is really a scope question, the kind a
+product owner would normally answer: in a shared team space, should
+any member be able to change any note, or only the person who wrote
+it?
+
+Both are reasonable. Shared editing treats notes like a team wiki,
+where anyone can fix a typo or update outdated information. Author-only
+editing treats notes as personal contributions that teammates can
+read but not alter.
+
+I chose **author-only** for edits and deletes. Without clear
+requirements, it's the safer default: no one can lose their work to a
+teammate's mistake, and it's easier to loosen a permission later than
+to take one away once users rely on it. Switching to shared editing
+would only mean removing the author check in `routes/notes.js`.
+
+## DB choice
+
+I considered three options: MongoDB, SQLite, and PostgreSQL.
+
+I ruled out **MongoDB** first. A document database shines when data is
+loosely structured, but this data is tabular and relational: users
+belong to teams, and notes belong to teams. The core access rule
+("only team members can see a team's notes") is a simple join in SQL,
+whereas in MongoDB I'd have to duplicate membership data or do lookups
+by hand.
+
+## What I'd do next
+
+- **Confirm the edit and delete rules with stakeholders.** The
+  author-only permission model was my best judgment without clear
+  requirements. Before building further, I'd confirm with the product
+  owner whether teams expect shared editing, author-only editing, or
+  something in between (for example, team admins who can edit any
+  note), so the service matches the business requirements exactly.
+- **Show author names on notes.** Notes currently return only an
+  `author_id`, which means little to someone reading them. Including
+  the author's name in responses would make notes easier to follow,
+  since teammates think of each other by name, not by number.
+
 ## Tech stack
 
 - Node.js + Express
