@@ -47,5 +47,35 @@ router.post('/teams/:teamId/notes', requireUser, requireTeamMember, async (req, 
     next(err);
   }
 });
+/** 
+ *  Get a single note by its ID.
+ *  Lets you see all the notes WITHIN your own team. **/
+router.get('/notes/:noteId', requireUser, async (req, res, next) => {
+  const noteId = Number(req.params.noteId);
+
+  if (!Number.isInteger(noteId) || noteId <= 0) {
+    return res.status(400).json({ error: 'Invalid note id' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT n.id, n.team_id, n.author_id, n.title, n.body,
+              n.created_at, n.updated_at
+         FROM notes n
+         JOIN team_members tm
+           ON tm.team_id = n.team_id AND tm.user_id = $2
+        WHERE n.id = $1`,
+      [noteId, req.user.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
 
 module.exports = router;
