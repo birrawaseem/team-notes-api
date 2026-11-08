@@ -59,6 +59,7 @@ Team 1 is Engineering, team 2 is Design.
 | POST   | `/teams/:teamId/notes` | Create a note in a team            |
 | GET    | `/notes/:noteId`       | Get a single note                  |
 | PATCH  | `/notes/:noteId`       | Update a note's title and/or body |
+| DELETE | `/notes/:noteId`       | Delete a note                     |
 
 All endpoints except `/health` require an `X-User-Id` header.
 The examples below use the seed data.
@@ -127,6 +128,18 @@ Note 1 was written by Alice (user 1), so this succeeds. The same
 request as Bob (user 2) returns `403`, since he's on the team but
 isn't the author. As Carol (user 3), who isn't on the team, it
 returns `404`.
+
+### Delete a note
+
+```bash
+curl -i -X DELETE localhost:3000/notes/2 -H "X-User-Id: 2"
+```
+
+Note 2 was written by Bob (user 2), so this returns `204 No Content`.
+As Alice (user 1), who's on the team but isn't the author, it returns
+`403`. As Carol (user 3), who isn't on the team, it returns `404`.
+
+`-i` shows the status code, since a `204` response has no body.
 
 ### Errors
 
