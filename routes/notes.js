@@ -78,4 +78,60 @@ router.get('/notes/:noteId', requireUser, async (req, res, next) => {
   }
 });
 
+// Update your own note
+router.patch('/notes/:noteId', requireUser, async (req, res, next) => {
+  const noteId = Number(req.params.noteId);
+
+  if (!Number.isInteger(noteId) || noteId <= 0) {
+    return res.status(400).json({ error: 'Invalid note id' });
+  }
+
+  const { title, body } = req.body ?? {};
+
+  if (title === undefined && body === undefined) {
+    return res.status(400).json({ error: 'Provide title and/or body to update' });
+  }
+  if (title !== undefined && (typeof title !== 'string' || title.trim() === '')) {
+    return res.status(400).json({ error: 'title must be a non-empty string' });
+  }
+  if (title !== undefined && title.length > 200) {
+    return res.status(400).json({ error: 'title must be 200 characters or fewer' });
+  }
+  if (body !== undefined && typeof body !== 'string') {
+    return res.status(400).json({ error: 'body must be a string' });
+  }
+
+  try {
+    const found = await pool.query(
+      `SELECT n.author_id
+         FROM notes n
+         JOIN team_members tm
+           ON tm.team_id = n.team_id AND tm.user_id = $2
+        WHERE n.id = $1`,
+      [noteId, req.user.id]
+    );
+
+    if (found.rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+    if (found.rows[0].author_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the author can edit this note' });
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE notes
+          SET title      = COALESCE($2, title),
+              body       = COALESCE($3, body),
+              updated_at = now()
+        WHERE id = $1
+        RETURNING id, team_id, author_id, title, body, created_at, updated_at`,
+      [noteId, title?.trim() ?? null, body ?? null]
+    );
+
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
