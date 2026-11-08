@@ -134,4 +134,36 @@ router.patch('/notes/:noteId', requireUser, async (req, res, next) => {
   }
 });
 
+// Delete your note within your own team
+router.delete('/notes/:noteId', requireUser, async (req, res, next) => {
+  const noteId = Number(req.params.noteId);
+
+  if (!Number.isInteger(noteId) || noteId <= 0) {
+    return res.status(400).json({ error: 'Invalid note id' });
+  }
+
+  try {
+    const found = await pool.query(
+      `SELECT n.author_id
+         FROM notes n
+         JOIN team_members tm
+           ON tm.team_id = n.team_id AND tm.user_id = $2
+        WHERE n.id = $1`,
+      [noteId, req.user.id]
+    );
+
+    if (found.rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+    if (found.rows[0].author_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the author can delete this note' });
+    }
+
+    await pool.query('DELETE FROM notes WHERE id = $1', [noteId]);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
